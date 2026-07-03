@@ -91,6 +91,28 @@ func (c *Client) GetMe(ctx context.Context) error {
 	return nil
 }
 
+type BotCommand struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
+}
+
+func (c *Client) SetMyCommands(ctx context.Context, commands []BotCommand) error {
+	payload := map[string]any{
+		"commands": commands,
+	}
+	var response struct {
+		OK          bool   `json:"ok"`
+		Description string `json:"description"`
+	}
+	if err := c.postJSON(ctx, "setMyCommands", payload, &response); err != nil {
+		return err
+	}
+	if !response.OK {
+		return fmt.Errorf("telegram setMyCommands failed: %s", response.Description)
+	}
+	return nil
+}
+
 func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) (int64, error) {
 	payload := map[string]any{
 		"chat_id":                  chatID,

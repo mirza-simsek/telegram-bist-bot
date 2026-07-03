@@ -51,6 +51,18 @@ func main() {
 	if err := telegramClient.GetMe(ctx); err != nil {
 		log.Fatalf("telegram token check failed: %v", err)
 	}
+	if err := telegramClient.SetMyCommands(ctx, []telegram.BotCommand{
+		{Command: "gunici100", Description: "BIST 100 gun ici tarama"},
+		{Command: "gunicitum", Description: "BIST Tum gun ici tarama"},
+		{Command: "gunluk100", Description: "BIST 100 gunluk radar"},
+		{Command: "gunluktum", Description: "BIST Tum gunluk radar"},
+		{Command: "durum", Description: "Son tarama durumu"},
+		{Command: "ayarlar", Description: "Aktif esikler ve zamanlama"},
+		{Command: "reset", Description: "Aktif islemi durdur"},
+		{Command: "help", Description: "Yardim ve komut listesi"},
+	}); err != nil {
+		log.Printf("telegram setMyCommands failed: %v", err)
+	}
 
 	chartClient := market.NewTradingViewChartClient(cfg.HTTPTimeout, cfg.TradingViewChartConcurrency)
 	tradingViewClient := market.NewTradingViewClient(cfg.HTTPTimeout)
