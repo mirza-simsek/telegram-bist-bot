@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -o /build/bistbot ./cmd/b
 # ---- final stage ----
 FROM python:3.12-slim
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates tzdata \
+    && apt-get install -y --no-install-recommends ca-certificates tzdata procps \
     && rm -rf /var/lib/apt/lists/*
 ENV TZ=Europe/Istanbul
 
