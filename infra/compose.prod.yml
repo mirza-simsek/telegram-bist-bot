@@ -1,0 +1,21 @@
+name: telegram-bist-bot-prod
+
+services:
+  bistbot:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f /app/bistbot || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

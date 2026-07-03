@@ -1,0 +1,12 @@
+.env
+/bistbot
+/logs/
+*.log
+*.key
+*.pem
+scripts/__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+.DS_Store
+infra/.env.production
