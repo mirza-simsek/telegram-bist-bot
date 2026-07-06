@@ -24,16 +24,15 @@ type App struct {
 	universeOrder []string
 	knownSymbols  map[string]struct{}
 
-	mu                  sync.Mutex
-	runningMode         analysis.Mode
-	runningUniverse     string
-	runningStartedAt    time.Time
-	runningCancel       context.CancelFunc
-	lastReports         map[analysis.Mode]*analysis.Report
-	lastErrors          map[analysis.Mode]string
-	lastIntradayRunKey  string
-	lastDailyRunKey     string
-	lastPinnedMessageID int64
+	mu                 sync.Mutex
+	runningMode        analysis.Mode
+	runningUniverse    string
+	runningStartedAt   time.Time
+	runningCancel      context.CancelFunc
+	lastReports        map[analysis.Mode]*analysis.Report
+	lastErrors         map[analysis.Mode]string
+	lastIntradayRunKey string
+	lastDailyRunKey    string
 }
 
 func New(cfg config.Config, bot *telegram.Client, scanner *analysis.Scanner, universes []analysis.Universe) *App {
@@ -116,8 +115,7 @@ func (a *App) handleCommand(ctx context.Context, chatID int64, rawCommand string
 	command := normalizeCommandName(rawCommand)
 	switch command {
 	case "start", "help":
-		_, _ = a.bot.SendMessage(ctx, chatID, a.formatHelp(chatID))
-		a.sendMainMenu(ctx, chatID)
+		_ = a.bot.SendMessage(ctx, chatID, a.formatHelp(chatID))
 	case "gunluk100":
 		go a.runManualScan(ctx, chatID, analysis.ModeDaily, a.universeByKey("bist100"))
 	case "gunluktum":
@@ -127,18 +125,17 @@ func (a *App) handleCommand(ctx context.Context, chatID int64, rawCommand string
 	case "gunicitum":
 		go a.runManualScan(ctx, chatID, analysis.ModeIntraday, a.universeByKey("tum"))
 	case "reset":
-		_, _ = a.bot.SendMessage(ctx, chatID, a.cancelRunningScan())
+		_ = a.bot.SendMessage(ctx, chatID, a.cancelRunningScan())
 	case "durum":
-		_, _ = a.bot.SendMessage(ctx, chatID, a.formatStatus())
+		_ = a.bot.SendMessage(ctx, chatID, a.formatStatus())
 	case "ayarlar":
-		_, _ = a.bot.SendMessage(ctx, chatID, a.formatSettings())
+		_ = a.bot.SendMessage(ctx, chatID, a.formatSettings())
 	default:
 		if symbol, ok := a.symbolFromCommand(rawCommand); ok {
 			go a.runSymbolAnalysis(ctx, chatID, symbol)
 			return
 		}
-		_, _ = a.bot.SendMessage(ctx, chatID, "Bilinmeyen komut. <code>help</code> yazabilirsin.")
-		a.sendMainMenu(ctx, chatID)
+		_ = a.bot.SendMessage(ctx, chatID, "Bilinmeyen komut. <code>help</code> yazabilirsin.")
 	}
 }
 
@@ -149,16 +146,14 @@ func (a *App) runManualScan(ctx context.Context, chatID int64, mode analysis.Mod
 		minScore = a.cfg.IntradayMinScore
 		title = "Gun Ici Guclu Sinyal Taramasi"
 	}
-	_, _ = a.bot.SendMessage(ctx, chatID, formatScanStarted(title, universe, minScore))
+	_ = a.bot.SendMessage(ctx, chatID, formatScanStarted(title, universe, minScore))
 
 	report, err := a.runScan(ctx, mode, universe, minScore)
 	if err != nil {
-		_, _ = a.bot.SendMessage(ctx, chatID, formatScanError(title, universe, err))
-		a.sendMainMenu(ctx, chatID)
+		_ = a.bot.SendMessage(ctx, chatID, formatScanError(title, universe, err))
 		return
 	}
-	_, _ = a.bot.SendMessage(ctx, chatID, formatReport(report, title))
-	a.sendMainMenu(ctx, chatID)
+	_ = a.bot.SendMessage(ctx, chatID, formatReport(report, title))
 }
 
 func (a *App) runScheduledScan(ctx context.Context, mode analysis.Mode) {
@@ -181,7 +176,7 @@ func (a *App) runScheduledScan(ctx context.Context, mode analysis.Mode) {
 	if err != nil {
 		log.Printf("scheduled %s scan failed: %v", mode, err)
 		if mode == analysis.ModeDaily {
-			_, _ = a.bot.SendMessage(ctx, a.cfg.DefaultChatID, fmt.Sprintf("Gun sonu tarama tamamlanamadi: <code>%s</code>", html.EscapeString(err.Error())))
+			_ = a.bot.SendMessage(ctx, a.cfg.DefaultChatID, fmt.Sprintf("Gun sonu tarama tamamlanamadi: <code>%s</code>", html.EscapeString(err.Error())))
 		}
 		return
 	}
@@ -193,35 +188,7 @@ func (a *App) runScheduledScan(ctx context.Context, mode analysis.Mode) {
 		log.Printf("scheduled %s scan found no new alert", mode)
 		return
 	}
-	messageID, err := a.bot.SendMessage(ctx, a.cfg.DefaultChatID, formatReport(report, title))
-	if err != nil {
-		log.Printf("scheduled %s scan send failed: %v", mode, err)
-		return
-	}
-	a.pinLatestScheduledReport(ctx, a.cfg.DefaultChatID, messageID)
-}
-
-// pinLatestScheduledReport pins the just-sent scheduled scan report so it stays
-// visible at the top of the chat regardless of later single-stock queries or
-// other scan messages, and unpins the previously pinned report.
-func (a *App) pinLatestScheduledReport(ctx context.Context, chatID int64, messageID int64) {
-	if messageID == 0 {
-		return
-	}
-	a.mu.Lock()
-	previous := a.lastPinnedMessageID
-	a.lastPinnedMessageID = messageID
-	a.mu.Unlock()
-
-	if err := a.bot.PinChatMessage(ctx, chatID, messageID); err != nil {
-		log.Printf("pin scheduled report failed: %v", err)
-		return
-	}
-	if previous != 0 && previous != messageID {
-		if err := a.bot.UnpinChatMessage(ctx, chatID, previous); err != nil {
-			log.Printf("unpin previous scheduled report failed: %v", err)
-		}
-	}
+	_ = a.bot.SendMessage(ctx, a.cfg.DefaultChatID, formatReport(report, title))
 }
 
 func (a *App) runScan(ctx context.Context, mode analysis.Mode, universe analysis.Universe, minScore int) (*analysis.Report, error) {
@@ -264,7 +231,7 @@ func (a *App) runSymbolAnalysis(ctx context.Context, chatID int64, symbol string
 	case a.scanLock <- struct{}{}:
 		defer func() { <-a.scanLock }()
 	default:
-		_, _ = a.bot.SendMessage(ctx, chatID, "Baska bir tarama veya hisse analizi calisiyor. Durdurmak icin <code>reset</code> yazabilirsin.")
+		_ = a.bot.SendMessage(ctx, chatID, "Baska bir tarama veya hisse analizi calisiyor. Durdurmak icin <code>reset</code> yazabilirsin.")
 		return
 	}
 
@@ -275,7 +242,7 @@ func (a *App) runSymbolAnalysis(ctx context.Context, chatID int64, symbol string
 
 	mode := analysis.Mode("hisse")
 	a.setRunning(mode, symbol, analysisCancel)
-	_, _ = a.bot.SendMessage(ctx, chatID, formatSymbolStarted(symbol))
+	_ = a.bot.SendMessage(ctx, chatID, formatSymbolStarted(symbol))
 
 	started := time.Now()
 	log.Printf("symbol analysis started symbol=%s", symbol)
@@ -283,12 +250,12 @@ func (a *App) runSymbolAnalysis(ctx context.Context, chatID int64, symbol string
 	a.setFinished(mode, nil, err)
 	if err != nil {
 		log.Printf("symbol analysis failed symbol=%s duration=%s error=%v", symbol, shortDuration(time.Since(started)), err)
-		_, _ = a.bot.SendMessage(ctx, chatID, formatSymbolError(symbol, err))
+		_ = a.bot.SendMessage(ctx, chatID, formatSymbolError(symbol, err))
 		return
 	}
 
 	log.Printf("symbol analysis finished symbol=%s duration=%s score=%d/%d", symbol, shortDuration(time.Since(started)), card.Score, card.MaxScore)
-	_, _ = a.bot.SendMessage(ctx, chatID, formatSymbolAnalysis(card))
+	_ = a.bot.SendMessage(ctx, chatID, formatSymbolAnalysis(card))
 }
 
 func (a *App) scheduleLoop(ctx context.Context) {

@@ -57,15 +57,6 @@ type User struct {
 	Username  string `json:"username"`
 }
 
-type InlineKeyboardMarkup struct {
-	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard"`
-}
-
-type InlineKeyboardButton struct {
-	Text         string `json:"text"`
-	CallbackData string `json:"callback_data"`
-}
-
 func NewClient(token string, timeout time.Duration) *Client {
 	return &Client{
 		token:   token,
@@ -113,7 +104,7 @@ func (c *Client) SetMyCommands(ctx context.Context, commands []BotCommand) error
 	return nil
 }
 
-func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) (int64, error) {
+func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) error {
 	payload := map[string]any{
 		"chat_id":                  chatID,
 		"text":                     text,
@@ -121,54 +112,6 @@ func (c *Client) SendMessage(ctx context.Context, chatID int64, text string) (in
 		"disable_web_page_preview": true,
 	}
 	return c.sendMessagePayload(ctx, payload)
-}
-
-func (c *Client) SendMessageWithKeyboard(ctx context.Context, chatID int64, text string, keyboard InlineKeyboardMarkup) (int64, error) {
-	payload := map[string]any{
-		"chat_id":                  chatID,
-		"text":                     text,
-		"parse_mode":               "HTML",
-		"disable_web_page_preview": true,
-		"reply_markup":             keyboard,
-	}
-	return c.sendMessagePayload(ctx, payload)
-}
-
-func (c *Client) PinChatMessage(ctx context.Context, chatID int64, messageID int64) error {
-	payload := map[string]any{
-		"chat_id":              chatID,
-		"message_id":           messageID,
-		"disable_notification": true,
-	}
-	var response struct {
-		OK          bool   `json:"ok"`
-		Description string `json:"description"`
-	}
-	if err := c.postJSON(ctx, "pinChatMessage", payload, &response); err != nil {
-		return err
-	}
-	if !response.OK {
-		return fmt.Errorf("telegram pinChatMessage failed: %s", response.Description)
-	}
-	return nil
-}
-
-func (c *Client) UnpinChatMessage(ctx context.Context, chatID int64, messageID int64) error {
-	payload := map[string]any{
-		"chat_id":    chatID,
-		"message_id": messageID,
-	}
-	var response struct {
-		OK          bool   `json:"ok"`
-		Description string `json:"description"`
-	}
-	if err := c.postJSON(ctx, "unpinChatMessage", payload, &response); err != nil {
-		return err
-	}
-	if !response.OK {
-		return fmt.Errorf("telegram unpinChatMessage failed: %s", response.Description)
-	}
-	return nil
 }
 
 func (c *Client) AnswerCallbackQuery(ctx context.Context, callbackQueryID string, text string) error {
@@ -191,19 +134,18 @@ func (c *Client) AnswerCallbackQuery(ctx context.Context, callbackQueryID string
 	return nil
 }
 
-func (c *Client) sendMessagePayload(ctx context.Context, payload map[string]any) (int64, error) {
+func (c *Client) sendMessagePayload(ctx context.Context, payload map[string]any) error {
 	var response struct {
-		OK          bool    `json:"ok"`
-		Description string  `json:"description"`
-		Result      Message `json:"result"`
+		OK          bool   `json:"ok"`
+		Description string `json:"description"`
 	}
 	if err := c.postJSON(ctx, "sendMessage", payload, &response); err != nil {
-		return 0, err
+		return err
 	}
 	if !response.OK {
-		return 0, fmt.Errorf("telegram sendMessage failed: %s", response.Description)
+		return fmt.Errorf("telegram sendMessage failed: %s", response.Description)
 	}
-	return response.Result.MessageID, nil
+	return nil
 }
 
 func (c *Client) Poll(ctx context.Context, handler func(context.Context, Update)) error {

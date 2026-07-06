@@ -1,13 +1,11 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"html"
 	"strings"
 
 	"telegram-bist-bot/internal/analysis"
-	"telegram-bist-bot/internal/telegram"
 )
 
 func (a *App) defaultUniverse() analysis.Universe {
@@ -129,33 +127,6 @@ Kullanim:
 <code>gunicitum</code>
 <code>gunluk100</code>
 <code>gunluktum</code>`, html.EscapeString(err.Error()))
-}
-
-func (a *App) sendMainMenu(ctx context.Context, chatID int64) {
-	_, _ = a.bot.SendMessageWithKeyboard(ctx, chatID, formatMainMenu(), mainMenuKeyboard())
-}
-
-func formatMainMenu() string {
-	return `<b>Tarama Menusu</b>
-Bir tarama sec.
-
-Hisse karti icin sembol yazabilirsin: <code>EREGL</code>
-Durum icin <code>durum</code> yazabilirsin.`
-}
-
-func mainMenuKeyboard() telegram.InlineKeyboardMarkup {
-	return telegram.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telegram.InlineKeyboardButton{
-			{
-				{Text: "Gun ici BIST 100", CallbackData: "gunici100"},
-				{Text: "Gun ici BIST Tum", CallbackData: "gunicitum"},
-			},
-			{
-				{Text: "Gunluk BIST 100", CallbackData: "gunluk100"},
-				{Text: "Gunluk BIST Tum", CallbackData: "gunluktum"},
-			},
-		},
-	}
 }
 
 func (a *App) formatUniverseList() string {
