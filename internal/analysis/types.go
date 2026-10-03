@@ -35,14 +35,14 @@ type Signal struct {
 	Price      float64
 	StopLoss   float64
 	RSI        float64
-	RSI1H      float64
+	RSI5M      float64
 	RSI15M     float64
 	VolumeX    float64
-	VolumeX1H  float64
+	VolumeX5M  float64
 	VolumeX15M float64
 	Approval   string
-	VWAP1H     string
-	POC1H      string
+	VWAP5M     string
+	POC5M      string
 	VWAP15M    string
 	POC15M     string
 	Details    []string

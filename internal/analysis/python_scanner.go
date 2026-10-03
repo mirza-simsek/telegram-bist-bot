@@ -158,14 +158,14 @@ type pythonSignal struct {
 	Price      float64  `json:"price"`
 	StopLoss   float64  `json:"stop_loss"`
 	RSI        float64  `json:"rsi"`
-	RSI1H      float64  `json:"rsi_1h"`
+	RSI5M      float64  `json:"rsi_5m"`
 	RSI15M     float64  `json:"rsi_15m"`
 	VolumeX    float64  `json:"volume_x"`
-	VolumeX1H  float64  `json:"volume_x_1h"`
+	VolumeX5M  float64  `json:"volume_x_5m"`
 	VolumeX15M float64  `json:"volume_x_15m"`
 	Approval   string   `json:"approval"`
-	VWAP1H     string   `json:"vwap_1h"`
-	POC1H      string   `json:"poc_1h"`
+	VWAP5M     string   `json:"vwap_5m"`
+	POC5M      string   `json:"poc_5m"`
 	VWAP15M    string   `json:"vwap_15m"`
 	POC15M     string   `json:"poc_15m"`
 	Details    []string `json:"details"`
@@ -208,14 +208,14 @@ func parsePythonReport(payload []byte) (*Report, error) {
 			Price:      item.Price,
 			StopLoss:   item.StopLoss,
 			RSI:        item.RSI,
-			RSI1H:      item.RSI1H,
+			RSI5M:      item.RSI5M,
 			RSI15M:     item.RSI15M,
 			VolumeX:    item.VolumeX,
-			VolumeX1H:  item.VolumeX1H,
+			VolumeX5M:  item.VolumeX5M,
 			VolumeX15M: item.VolumeX15M,
 			Approval:   item.Approval,
-			VWAP1H:     item.VWAP1H,
-			POC1H:      item.POC1H,
+			VWAP5M:     item.VWAP5M,
+			POC5M:      item.POC5M,
 			VWAP15M:    item.VWAP15M,
 			POC15M:     item.POC15M,
 			Details:    item.Details,

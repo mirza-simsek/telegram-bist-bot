@@ -128,7 +128,7 @@ func (s *Scanner) scanIntradaySnapshot(ctx context.Context, universe Universe, m
 			continue
 		}
 		report.AnalyzedSymbols++
-		if signal.Score >= minScore && signal.RSI1H < 80 && signal.RSI15M < 80 {
+		if signal.Score >= minScore && signal.RSI5M < 80 && signal.RSI15M < 80 {
 			signals = append(signals, signal)
 		}
 	}
@@ -137,7 +137,7 @@ func (s *Scanner) scanIntradaySnapshot(ctx context.Context, universe Universe, m
 		if signals[i].Score != signals[j].Score {
 			return signals[i].Score > signals[j].Score
 		}
-		return signals[i].RSI1H < signals[j].RSI1H
+		return signals[i].RSI5M < signals[j].RSI5M
 	})
 	report.Results = limitSignals(signals, s.maxResults)
 	report.FinishedAt = time.Now().In(s.location)
@@ -271,11 +271,11 @@ func analyzeIntradaySnapshot(symbol string, snapshot market.Snapshot) (Signal, b
 		Symbol:     symbol,
 		Score:      score,
 		Price:      round(price, 2),
-		RSI1H:      round(rsi1H, 1),
+		RSI5M:      round(rsi1H, 1),
 		RSI15M:     round(rsi15M, 1),
-		VolumeX1H:  round(volumeH, 1),
+		VolumeX5M:  round(volumeH, 1),
 		VolumeX15M: round(volume15, 1),
-		VWAP1H:     upperLower(price, vwapH),
+		VWAP5M:     upperLower(price, vwapH),
 		VWAP15M:    upperLower(price, vwap15),
 		Details:    details,
 	}, true

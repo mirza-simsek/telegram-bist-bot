@@ -154,7 +154,7 @@ func (s *Scanner) ScanIntraday(ctx context.Context, universe Universe, minScore 
 			continue
 		}
 		report.AnalyzedSymbols++
-		if signal.Score >= minScore && signal.RSI1H < 80 && signal.RSI15M < 80 {
+		if signal.Score >= minScore && signal.RSI5M < 80 && signal.RSI15M < 80 {
 			signals = append(signals, signal)
 		}
 	}
@@ -163,7 +163,7 @@ func (s *Scanner) ScanIntraday(ctx context.Context, universe Universe, minScore 
 		if signals[i].Score != signals[j].Score {
 			return signals[i].Score > signals[j].Score
 		}
-		return signals[i].RSI1H < signals[j].RSI1H
+		return signals[i].RSI5M < signals[j].RSI5M
 	})
 	report.Results = limitSignals(signals, s.maxResults)
 	report.FinishedAt = time.Now().In(s.location)
@@ -302,12 +302,12 @@ func analyzeIntraday(symbol string, data1H []market.Candle, data15M []market.Can
 		Score:      score,
 		Price:      round(price, 2),
 		StopLoss:   round(price-(1.5*m1H.atr), 2),
-		RSI1H:      round(m1H.rsi, 1),
+		RSI5M:      round(m1H.rsi, 1),
 		RSI15M:     round(m15M.rsi, 1),
-		VolumeX1H:  round(m1H.volumeX, 1),
+		VolumeX5M:  round(m1H.volumeX, 1),
 		VolumeX15M: round(m15M.volumeX, 1),
-		VWAP1H:     upperLower(price, m1H.vwap),
-		POC1H:      upperLower(price, m1H.poc),
+		VWAP5M:     upperLower(price, m1H.vwap),
+		POC5M:      upperLower(price, m1H.poc),
 		VWAP15M:    upperLower(price, m15M.vwap),
 		POC15M:     upperLower(price, m15M.poc),
 		Details:    details,

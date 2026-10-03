@@ -100,9 +100,10 @@ def metrikleri_hesapla(df, poc_lookback):
 
     res = {}
     res['Fiyat'] = float(close.iloc[-1])
-    res['S20'] = float(sma(close, 20).iloc[-1])
-    res['S50'] = float(sma(close, 50).iloc[-1])
-    res['S200'] = float(sma(close, 200).iloc[-1])
+    res['E9']  = float(ema(close, 9).iloc[-1])
+    res['E21'] = float(ema(close, 21).iloc[-1])
+    res['E50'] = float(ema(close, 50).iloc[-1])
+    res['E200'] = float(ema(close, 200).iloc[-1])
     res['RSI'] = float(rsi(close).iloc[-1])
     res['VWAP'] = float(intraday_vwap(df).iloc[-1])
     res['POC'], res['VAH'] = hacim_profili_hesapla(df, lookback=poc_lookback)
@@ -163,59 +164,59 @@ def toplu_veri_indir(hisseler, period, interval, max_retries=2):
     return sonuc
 
 # ── 4. ANALİZ MOTORU (Artık Sadece Hesaplama Yapar, Network Yok) ──────
-def analiz_et(ticker, data_1h, data_15m):
+def analiz_et(ticker, data_5m, data_15m):
     """
     Veri önceden indirilmiş olarak gelir — bu fonksiyon sadece hesap yapar.
     """
     try:
-        if data_1h is None or data_15m is None:
+        if data_5m is None or data_15m is None:
             return None
-        if len(data_1h) < 200 or len(data_15m) < 200:
+        if len(data_5m) < 200 or len(data_15m) < 200:
             return None
 
-        m_1h  = metrikleri_hesapla(data_1h,  poc_lookback=80)
+        m_5m  = metrikleri_hesapla(data_5m,  poc_lookback=80)
         m_15m = metrikleri_hesapla(data_15m, poc_lookback=40)
 
-        F = m_1h['Fiyat']
+        F = m_5m['Fiyat']
         skor = 0
         detaylar = []
 
-        onay_1h  = F > m_1h['VWAP']  and F > m_1h['POC']
+        onay_5m  = F > m_5m['VWAP']  and F > m_5m['POC']
         onay_15m = F > m_15m['VWAP'] and F > m_15m['POC']
 
-        if onay_1h:  skor += 2
+        if onay_5m:  skor += 2
         if onay_15m: skor += 2
 
-        if F > m_1h['S20'] and m_1h['S20'] > m_1h['S50']:
-            skor += 1; detaylar.append("1h Boğa Trendi 📈")
+        if F > m_5m['E9'] and m_5m['E9'] > m_5m['E21']:
+            skor += 1; detaylar.append("5m Boğa Trendi 📈")
 
-        if F < m_1h['S200']:
-            skor -= 2; detaylar.append("1h SMA200 Altı ⚠️")
+        if F < m_5m['E200']:
+            skor -= 2; detaylar.append("5m EMA200 Altı ⚠️")
 
-        if m_1h['TRP'] or m_15m['TRP']:
+        if m_5m['TRP'] or m_15m['TRP']:
             skor += 1; detaylar.append("TRP(9) AL 🟢")
 
-        if m_1h['OBV']:  skor += 1; detaylar.append("1h OBV🚀")
+        if m_5m['OBV']:  skor += 1; detaylar.append("5m OBV🚀")
         if m_15m['OBV']: skor += 1; detaylar.append("15m OBV🚀")
 
-        if F > m_1h['VAH']: skor += 1; detaylar.append("1h VAH Kırılımı 🔥")
-        if m_1h['HacimX'] > 1.5 or m_15m['HacimX'] > 1.5:
+        if F > m_5m['VAH']: skor += 1; detaylar.append("5m VAH Kırılımı 🔥")
+        if m_5m['HacimX'] > 1.5 or m_15m['HacimX'] > 1.5:
             skor += 1; detaylar.append("Hacim Sıçraması 🌊")
 
-        stop_loss = F - (1.5 * m_1h['ATR'])
+        stop_loss = F - (1.5 * m_5m['ATR'])
 
         return {
             "Hisse":      ticker,
             "Fiyat":      round(F, 2),
             "Skor":       skor,
             "StopLoss":   round(stop_loss, 2),
-            "VWAP_1h":    "Üst ✓" if F > m_1h['VWAP']  else "Alt ✗",
-            "POC_1h":     "Üst ✓" if F > m_1h['POC']   else "Alt ✗",
+            "VWAP_5m":    "Üst ✓" if F > m_5m['VWAP']  else "Alt ✗",
+            "POC_5m":     "Üst ✓" if F > m_5m['POC']   else "Alt ✗",
             "VWAP_15m":   "Üst ✓" if F > m_15m['VWAP'] else "Alt ✗",
             "POC_15m":    "Üst ✓" if F > m_15m['POC']  else "Alt ✗",
-            "RSI_1h":     round(m_1h['RSI'], 1),
+            "RSI_5m":     round(m_5m['RSI'], 1),
             "RSI_15m":    round(m_15m['RSI'], 1),
-            "HacimX_1h":  round(m_1h['HacimX'], 1),
+            "HacimX_5m":  round(m_5m['HacimX'], 1),
             "HacimX_15m": round(m_15m['HacimX'], 1),
             "Sinyaller":  " | ".join(detaylar)
         }
@@ -238,7 +239,7 @@ if __name__ == "__main__":
 
     gruplar = [hisseler[i:i+BATCH_BOYUTU] for i in range(0, len(hisseler), BATCH_BOYUTU)]
 
-    tum_1h:  dict[str, pd.DataFrame] = {}
+    tum_5m:  dict[str, pd.DataFrame] = {}
     tum_15m: dict[str, pd.DataFrame] = {}
 
     print(f"  Toplam {len(hisseler)} hisse → {len(gruplar)} grup × 2 periyot = {len(gruplar)*2} görev")
@@ -249,15 +250,15 @@ if __name__ == "__main__":
 
     def grup_indir(args):
         g_idx, grup = args
-        r1h  = toplu_veri_indir(grup, period="3mo", interval="1h")
+        r5m  = toplu_veri_indir(grup, period="5d", interval="5m")
         r15m = toplu_veri_indir(grup, period="1mo", interval="15m")
         with indirme_lock:
-            tum_1h.update(r1h)
+            tum_5m.update(r5m)
             tum_15m.update(r15m)
             tamamlanan_grup[0] += 1
             print(
                 f"  ✓ Grup {g_idx:>2}/{len(gruplar)} tamamlandı "
-                f"(1h:{len(r1h)} / 15m:{len(r15m)} hisse)  "
+                f"(5m:{len(r5m)} / 15m:{len(r15m)} hisse)  "
                 f"[{tamamlanan_grup[0]*100//len(gruplar):>3}%]"
             )
         return g_idx
@@ -267,14 +268,14 @@ if __name__ == "__main__":
         list(dl_exec.map(grup_indir, enumerate(gruplar, 1)))
 
     print(f"\n  İndirme tamamlandı: {time.time()-t_indir_baslangic:.1f}s  "
-          f"({len(tum_1h)} hisse 1h | {len(tum_15m)} hisse 15m)\n")
+          f"({len(tum_5m)} hisse 5m | {len(tum_15m)} hisse 15m)\n")
 
-    print(f"\n  Analiz hesaplanıyor ({len(tum_1h)} hisse)...\n")
+    print(f"\n  Analiz hesaplanıyor ({len(tum_5m)} hisse)...\n")
 
     hesaplanacaklar = [
-        (t, tum_1h.get(t), tum_15m.get(t))
+        (t, tum_5m.get(t), tum_15m.get(t))
         for t in hisseler
-        if t in tum_1h and t in tum_15m
+        if t in tum_5m and t in tum_15m
     ]
 
     sonuclar = []
@@ -282,8 +283,8 @@ if __name__ == "__main__":
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(analiz_et, t, d1h, d15m): t
-            for t, d1h, d15m in hesaplanacaklar
+            executor.submit(analiz_et, t, d5m, d15m): t
+            for t, d5m, d15m in hesaplanacaklar
         }
         tamamlanan = 0
         for future in concurrent.futures.as_completed(futures):
@@ -299,11 +300,11 @@ if __name__ == "__main__":
     if not df.empty:
         df_final = df[
             (df["Skor"] >= 5) &
-            (df["RSI_1h"] < 80) &
+            (df["RSI_5m"] < 80) &
             (df["RSI_15m"] < 80)
             ].copy()
         df_final = df_final.sort_values(
-            by=["Skor", "RSI_1h"], ascending=[False, True]
+            by=["Skor", "RSI_5m"], ascending=[False, True]
         ).head(10)
 
         print(f"\n{'='*140}")
@@ -315,19 +316,20 @@ if __name__ == "__main__":
         else:
             baslik = (
                 f"  {'HİSSE':<6} | {'SKOR':<5} | {'FİYAT':<8} | {'STOP-LS':<7} | "
-                f"{'1h VWAP':<7} | {'1h POC':<7} | {'15m VWAP':<8} | {'15m POC':<7} | "
-                f"{'1h RSI':<6} | {'15m RSI':<7} | {'1h Hacim':<8} | {'15m Hacim':<9} | {'SİNYALLER'}"
+                f"{'5m VWAP':<7} | {'5m POC':<7} | {'15m VWAP':<8} | {'15m POC':<7} | "
+                f"{'5m RSI':<6} | {'15m RSI':<7} | {'5m Hacim':<8} | {'15m Hacim':<9} | {'SİNYALLER'}"
             )
             print(baslik)
             print("  " + "-"*138)
             for _, r in df_final.iterrows():
                 print(
                     f"  {r['Hisse']:<6} | {r['Skor']:>2}/10 | {r['Fiyat']:>8.2f} | "
-                    f"{r['StopLoss']:>7.2f} | {r['VWAP_1h']:<7} | {r['POC_1h']:<7} | "
-                    f"{r['VWAP_15m']:<8} | {r['POC_15m']:<7} | {r['RSI_1h']:>6.1f} | "
-                    f"{r['RSI_15m']:>7.1f} | x{r['HacimX_1h']:<7.1f} | x{r['HacimX_15m']:<8.1f} | "
+                    f"{r['StopLoss']:>7.2f} | {r['VWAP_5m']:<7} | {r['POC_5m']:<7} | "
+                    f"{r['VWAP_15m']:<8} | {r['POC_15m']:<7} | {r['RSI_5m']:>6.1f} | "
+                    f"{r['RSI_15m']:>7.1f} | x{r['HacimX_5m']:<7.1f} | x{r['HacimX_15m']:<8.1f} | "
                     f"{r['Sinyaller']}"
                 )
         print("\n" + "="*140 + "\n")
     else:
         print("\n\n  Hata: Hiçbir hissenin verisi indirilemedi.\n")
+

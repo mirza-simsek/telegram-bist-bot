@@ -88,12 +88,12 @@ def intraday_signal(item):
         "score": safe_int(item.get("Skor")),
         "price": finite_number(item.get("Fiyat")),
         "stop_loss": finite_number(item.get("StopLoss")),
-        "rsi_1h": finite_number(item.get("RSI_1h")),
+        "rsi_5m": finite_number(item.get("RSI_5m")),
         "rsi_15m": finite_number(item.get("RSI_15m")),
-        "volume_x_1h": finite_number(item.get("HacimX_1h")),
+        "volume_x_5m": finite_number(item.get("HacimX_5m")),
         "volume_x_15m": finite_number(item.get("HacimX_15m")),
-        "vwap_1h": position(item.get("VWAP_1h")),
-        "poc_1h": position(item.get("POC_1h")),
+        "vwap_5m": position(item.get("VWAP_5m")),
+        "poc_5m": position(item.get("POC_5m")),
         "vwap_15m": position(item.get("VWAP_15m")),
         "poc_15m": position(item.get("POC_15m")),
         "details": split_details(item.get("Sinyaller")),
@@ -118,28 +118,28 @@ def scan_intraday(args, symbols):
     batch_size = max(args.batch_size, 1)
     workers = max(args.workers, 4)
     groups = list(chunks(symbols, batch_size))
-    data_1h = {}
+    data_5m = {}
     data_15m = {}
 
     def download_group(group):
         return (
-            module.toplu_veri_indir(group, period="3mo", interval="1h"),
+            module.toplu_veri_indir(group, period="5d", interval="5m"),
             module.toplu_veri_indir(group, period="1mo", interval="15m"),
         )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        for one_hour, fifteen_min in executor.map(download_group, groups):
-            data_1h.update(one_hour)
+        for five_min, fifteen_min in executor.map(download_group, groups):
+            data_5m.update(five_min)
             data_15m.update(fifteen_min)
 
-    common_symbols = [symbol for symbol in symbols if symbol in data_1h and symbol in data_15m]
+    common_symbols = [symbol for symbol in symbols if symbol in data_5m and symbol in data_15m]
     candidates = []
     analyzed = 0
     max_workers = min(32, (os.cpu_count() or 4) * 4)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(module.analiz_et, symbol, data_1h.get(symbol), data_15m.get(symbol)): symbol
+            executor.submit(module.analiz_et, symbol, data_5m.get(symbol), data_15m.get(symbol)): symbol
             for symbol in common_symbols
         }
         for future in concurrent.futures.as_completed(futures):
@@ -147,10 +147,10 @@ def scan_intraday(args, symbols):
             if item is None:
                 continue
             analyzed += 1
-            if item["Skor"] >= args.min_score and item["RSI_1h"] < 80 and item["RSI_15m"] < 80:
+            if item["Skor"] >= args.min_score and item["RSI_5m"] < 80 and item["RSI_15m"] < 80:
                 candidates.append(intraday_signal(item))
 
-    candidates.sort(key=lambda item: (-item["score"], item["rsi_1h"]))
+    candidates.sort(key=lambda item: (-item["score"], item["rsi_5m"]))
     return candidates[: args.max_results], len(common_symbols), analyzed
 
 
@@ -189,8 +189,8 @@ def scan_daily(args, symbols):
 def build_report(args, symbols, started_at, results, data_symbols, analyzed_symbols):
     finished_at = datetime.now(started_at.tzinfo)
     if args.mode == "gunici":
-        interval_summary = "bist_data_scrap: 3mo / 1h + 1mo / 15m"
-        filter_summary = f"Skor >= {args.min_score}, 1h RSI < 80, 15m RSI < 80"
+        interval_summary = "bist_data_scrap: 5d / 5m + 1mo / 15m"
+        filter_summary = f"Skor >= {args.min_score}, 5m RSI < 80, 15m RSI < 80"
     else:
         interval_summary = "bist_data_scrap: 1y / 1d"
         filter_summary = f"Skor >= {args.min_score}, RSI < 80"

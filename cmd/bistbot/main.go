@@ -23,25 +23,16 @@ func main() {
 		log.Fatalf("config error: %v", err)
 	}
 
-	allSymbols, invalidAllSymbols, err := analysis.LoadSymbols(cfg.AllSymbolsFile)
+	bist30Symbols, invalidBIST30Symbols, err := analysis.LoadSymbols(cfg.AllSymbolsFile)
 	if err != nil {
-		log.Fatalf("all symbols error: %v", err)
+		log.Fatalf("bist30 symbols error: %v", err)
 	}
-	if len(invalidAllSymbols) > 0 {
-		log.Printf("ignored %d invalid symbols from %s", len(invalidAllSymbols), cfg.AllSymbolsFile)
-	}
-
-	bist100Symbols, invalidBIST100Symbols, err := analysis.LoadSymbols(cfg.BIST100SymbolsFile)
-	if err != nil {
-		log.Fatalf("bist100 symbols error: %v", err)
-	}
-	if len(invalidBIST100Symbols) > 0 {
-		log.Printf("ignored %d invalid symbols from %s", len(invalidBIST100Symbols), cfg.BIST100SymbolsFile)
+	if len(invalidBIST30Symbols) > 0 {
+		log.Printf("ignored %d invalid symbols from %s", len(invalidBIST30Symbols), cfg.AllSymbolsFile)
 	}
 
 	universes := []analysis.Universe{
-		{Key: "tum", Label: "BIST Tum", SymbolsFile: cfg.AllSymbolsFile, Symbols: allSymbols},
-		{Key: "bist100", Label: "BIST 100", SymbolsFile: cfg.BIST100SymbolsFile, Symbols: bist100Symbols},
+		{Key: "bist30", Label: "BIST 30", SymbolsFile: cfg.AllSymbolsFile, Symbols: bist30Symbols},
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -52,10 +43,8 @@ func main() {
 		log.Fatalf("telegram token check failed: %v", err)
 	}
 	if err := telegramClient.SetMyCommands(ctx, []telegram.BotCommand{
-		{Command: "gunici100", Description: "BIST 100 gun ici tarama"},
-		{Command: "gunicitum", Description: "BIST Tum gun ici tarama"},
-		{Command: "gunluk100", Description: "BIST 100 gunluk radar"},
-		{Command: "gunluktum", Description: "BIST Tum gunluk radar"},
+		{Command: "gunici", Description: "BIST 30 gun ici tarama (5m + 15m)"},
+		{Command: "gunluk", Description: "BIST 30 gunluk radar"},
 		{Command: "durum", Description: "Son tarama durumu"},
 		{Command: "ayarlar", Description: "Aktif esikler ve zamanlama"},
 		{Command: "reset", Description: "Aktif islemi durdur"},
@@ -82,7 +71,7 @@ func main() {
 	}
 	botApp := app.New(cfg, telegramClient, scanner, universes)
 
-	log.Printf("bist bot started with %d all symbols, %d bist100 symbols, timezone=%s", len(allSymbols), len(bist100Symbols), cfg.MarketTimezoneRaw)
+	log.Printf("bist bot started with %d bist30 symbols, timezone=%s", len(bist30Symbols), cfg.MarketTimezoneRaw)
 	err = botApp.Run(ctx)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatalf("bot stopped: %v", err)

@@ -116,14 +116,10 @@ func (a *App) handleCommand(ctx context.Context, chatID int64, rawCommand string
 	switch command {
 	case "start", "help":
 		_ = a.bot.SendMessage(ctx, chatID, a.formatHelp(chatID))
-	case "gunluk100":
-		go a.runManualScan(ctx, chatID, analysis.ModeDaily, a.universeByKey("bist100"))
-	case "gunluktum":
-		go a.runManualScan(ctx, chatID, analysis.ModeDaily, a.universeByKey("tum"))
-	case "gunici100":
-		go a.runManualScan(ctx, chatID, analysis.ModeIntraday, a.universeByKey("bist100"))
-	case "gunicitum":
-		go a.runManualScan(ctx, chatID, analysis.ModeIntraday, a.universeByKey("tum"))
+	case "gunici":
+		go a.runManualScan(ctx, chatID, analysis.ModeIntraday, a.universeByKey("bist30"))
+	case "gunluk":
+		go a.runManualScan(ctx, chatID, analysis.ModeDaily, a.universeByKey("bist30"))
 	case "reset":
 		_ = a.bot.SendMessage(ctx, chatID, a.cancelRunningScan())
 	case "durum":

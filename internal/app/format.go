@@ -119,18 +119,18 @@ func formatIntradayCandidate(b *strings.Builder, rank int, signal analysis.Signa
 		signal.Price,
 		signal.Score,
 	)
-	fmt.Fprintf(b, "Konum: <code>1s VWAP/POC %s/%s</code> | <code>15d VWAP/POC %s/%s</code>\n",
-		html.EscapeString(positionText(signal.VWAP1H)),
-		html.EscapeString(positionText(signal.POC1H)),
+	fmt.Fprintf(b, "Konum: <code>5d VWAP/POC %s/%s</code> | <code>15d VWAP/POC %s/%s</code>\n",
+		html.EscapeString(positionText(signal.VWAP5M)),
+		html.EscapeString(positionText(signal.POC5M)),
 		html.EscapeString(positionText(signal.VWAP15M)),
 		html.EscapeString(positionText(signal.POC15M)),
 	)
 	momentum := make([]string, 0, 2)
-	if signal.RSI1H > 0 || signal.RSI15M > 0 {
-		momentum = append(momentum, fmt.Sprintf("RSI <code>1s %.1f</code> / <code>15d %.1f</code>", signal.RSI1H, signal.RSI15M))
+	if signal.RSI5M > 0 || signal.RSI15M > 0 {
+		momentum = append(momentum, fmt.Sprintf("RSI <code>5d %.1f</code> / <code>15d %.1f</code>", signal.RSI5M, signal.RSI15M))
 	}
-	if signal.VolumeX1H > 0 || signal.VolumeX15M > 0 {
-		momentum = append(momentum, fmt.Sprintf("Hacim <code>1s x%.1f</code> / <code>15d x%.1f</code>", signal.VolumeX1H, signal.VolumeX15M))
+	if signal.VolumeX5M > 0 || signal.VolumeX15M > 0 {
+		momentum = append(momentum, fmt.Sprintf("Hacim <code>5d x%.1f</code> / <code>15d x%.1f</code>", signal.VolumeX5M, signal.VolumeX15M))
 	}
 	if len(momentum) > 0 {
 		fmt.Fprintf(b, "%s\n", strings.Join(momentum, " | "))
@@ -487,21 +487,29 @@ func prettyDetail(detail string) string {
 	case detail == "TRP(9) AL":
 		return "TRP(9)"
 	case detail == "1h Boga Trendi":
-		return "1s trend"
+		return "5d trend"
 	case detail == "1h boga trendi":
-		return "1s trend"
+		return "5d trend"
+	case detail == "5m Boğa Trendi":
+		return "5d trend"
 	case detail == "1h SMA200 Alti":
-		return "1s SMA200 alti"
+		return "5d EMA200 alti"
 	case detail == "1h SMA200 alti":
-		return "1s SMA200 alti"
+		return "5d EMA200 alti"
+	case detail == "5m EMA200 Altı":
+		return "5d EMA200 alti"
 	case detail == "1h OBV":
-		return "1s OBV"
+		return "5d OBV"
+	case detail == "5m OBV":
+		return "5d OBV"
 	case detail == "15m OBV":
 		return "15d OBV"
 	case detail == "1h VAH Kirilimi":
-		return "1s VAH kirilimi"
+		return "5d VAH kirilimi"
 	case detail == "1h VAH kirilimi":
-		return "1s VAH kirilimi"
+		return "5d VAH kirilimi"
+	case detail == "5m VAH Kırılımı":
+		return "5d VAH kirilimi"
 	case detail == "Hacim Sicramasi":
 		return "Hacim sicramasi"
 	case detail == "hacim sicramasi":

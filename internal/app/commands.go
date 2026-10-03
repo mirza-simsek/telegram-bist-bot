@@ -26,13 +26,13 @@ func (a *App) universeByKey(key string) analysis.Universe {
 	if universe, ok := a.universes[key]; ok {
 		return universe
 	}
-	if universe, ok := a.universes["tum"]; ok {
+	if universe, ok := a.universes["bist30"]; ok {
 		return universe
 	}
 	if len(a.universeOrder) > 0 {
 		return a.universes[a.universeOrder[0]]
 	}
-	return analysis.Universe{Key: "tum", Label: "BIST Tum"}
+	return analysis.Universe{Key: "bist30", Label: "BIST 30"}
 }
 
 func normalizeUniverseKey(raw string) string {
@@ -42,10 +42,8 @@ func normalizeUniverseKey(raw string) string {
 	value = strings.ReplaceAll(value, "-", "")
 	value = strings.ReplaceAll(value, " ", "")
 	switch value {
-	case "", "tum", "tüm", "all", "bisttum", "bisttüm", "bistall", "bist":
-		return "tum"
-	case "100", "bist100", "xu100":
-		return "bist100"
+	case "", "30", "bist30", "xu030":
+		return "bist30"
 	default:
 		return value
 	}
@@ -92,17 +90,15 @@ func normalizeCommandSymbol(raw string) string {
 }
 
 func (a *App) formatHelp(chatID int64) string {
-	return fmt.Sprintf(`<b>BIST Tarama Botu</b>
+	return fmt.Sprintf(`<b>BIST 30 VIOP Tarama Botu</b>
 Chat ID: <code>%d</code>
 
 <b>Tarama komutlari</b>
-<code>gunici100</code> - BIST 100 gun ici
-<code>gunicitum</code> - BIST Tum gun ici
-<code>gunluk100</code> - BIST 100 gunluk radar
-<code>gunluktum</code> - BIST Tum gunluk radar
+<code>gunici</code> - BIST 30 gun ici tarama (5m + 15m, EMA9/21)
+<code>gunluk</code> - BIST 30 gunluk radar
 
 <b>Hisse karti</b>
-<code>ALARK</code> - Tek hisse 15dk, 1s ve gunluk teknik analiz
+<code>THYAO</code> - Tek hisse 15dk, 1s ve gunluk teknik analiz
 
 <b>Yonetim</b>
 <code>durum</code> - Son tarama durumu
@@ -110,7 +106,7 @@ Chat ID: <code>%d</code>
 <code>ayarlar</code> - Aktif esikler ve zamanlama
 <code>help</code> - Bu yardim
 
-Kapsamlar: %s
+Kapsam: %s
 
 Bu bot teknik sinyal taramasi yapar; yatirim tavsiyesi degildir.`,
 		chatID,
@@ -123,10 +119,8 @@ func (a *App) formatUsageError(err error) string {
 Sebep: <code>%s</code>
 
 Kullanim:
-<code>gunici100</code>
-<code>gunicitum</code>
-<code>gunluk100</code>
-<code>gunluktum</code>`, html.EscapeString(err.Error()))
+<code>gunici</code>
+<code>gunluk</code>`, html.EscapeString(err.Error()))
 }
 
 func (a *App) formatUniverseList() string {

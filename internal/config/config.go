@@ -12,16 +12,15 @@ import (
 )
 
 type Config struct {
-	TelegramToken      string
-	DefaultChatID      int64
-	AllowedChatIDs     map[int64]struct{}
-	MarketTimezone     *time.Location
-	MarketTimezoneRaw  string
-	SymbolsFile        string
-	AllSymbolsFile     string
-	BIST100SymbolsFile string
-	DefaultUniverse    string
-	ScheduledUniverse  string
+	TelegramToken     string
+	DefaultChatID     int64
+	AllowedChatIDs    map[int64]struct{}
+	MarketTimezone    *time.Location
+	MarketTimezoneRaw string
+	SymbolsFile       string
+	AllSymbolsFile    string
+	DefaultUniverse   string
+	ScheduledUniverse string
 
 	TradingViewChartConcurrency int
 	PythonScannerEnabled        bool
@@ -75,18 +74,17 @@ func Load() (Config, error) {
 		allowed[defaultChatID] = struct{}{}
 	}
 
-	allSymbolsFile := getenv("ALL_SYMBOLS_FILE", getenv("SYMBOLS_FILE", filepath.FromSlash("data/bist_tum_hisseler.txt")))
+	allSymbolsFile := getenv("ALL_SYMBOLS_FILE", getenv("SYMBOLS_FILE", filepath.FromSlash("data/bist_30_hisseler.txt")))
 	cfg := Config{
-		TelegramToken:      token,
-		DefaultChatID:      defaultChatID,
-		AllowedChatIDs:     allowed,
-		MarketTimezone:     loc,
-		MarketTimezoneRaw:  locName,
-		SymbolsFile:        allSymbolsFile,
-		AllSymbolsFile:     allSymbolsFile,
-		BIST100SymbolsFile: getenv("BIST100_SYMBOLS_FILE", filepath.FromSlash("data/bist_100_hisseler.txt")),
-		DefaultUniverse:    strings.ToLower(getenv("DEFAULT_UNIVERSE", "tum")),
-		ScheduledUniverse:  strings.ToLower(getenv("SCHEDULED_UNIVERSE", "tum")),
+		TelegramToken:     token,
+		DefaultChatID:     defaultChatID,
+		AllowedChatIDs:    allowed,
+		MarketTimezone:    loc,
+		MarketTimezoneRaw: locName,
+		SymbolsFile:       allSymbolsFile,
+		AllSymbolsFile:    allSymbolsFile,
+		DefaultUniverse:   strings.ToLower(getenv("DEFAULT_UNIVERSE", "bist30")),
+		ScheduledUniverse: strings.ToLower(getenv("SCHEDULED_UNIVERSE", "bist30")),
 
 		TradingViewChartConcurrency: mustIntEnv("TRADINGVIEW_CHART_CONCURRENCY", 4),
 		PythonScannerEnabled:        boolEnv("PYTHON_SCANNER_ENABLED", true),
