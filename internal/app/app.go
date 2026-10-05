@@ -177,6 +177,7 @@ func (a *App) runScheduledScan(ctx context.Context, mode analysis.Mode) {
 		return
 	}
 
+	report.Results = eligibleScheduledSignals(mode, report.Results)
 	if mode == analysis.ModeIntraday {
 		report.Results = a.deduper.filter(mode, universe.Key, report.Results, time.Now().In(a.cfg.MarketTimezone))
 	}
@@ -185,6 +186,24 @@ func (a *App) runScheduledScan(ctx context.Context, mode analysis.Mode) {
 		return
 	}
 	_ = a.bot.SendMessage(ctx, a.cfg.DefaultChatID, formatReport(report, title))
+}
+
+func eligibleScheduledSignals(mode analysis.Mode, signals []analysis.Signal) []analysis.Signal {
+	eligible := make([]analysis.Signal, 0, len(signals))
+	for _, signal := range signals {
+		if mode == analysis.ModeIntraday {
+			if signal.TLStatus == "AL" {
+				eligible = append(eligible, signal)
+			}
+			continue
+		}
+		if signal.TLStatus == "AL" && signal.USDStatus != "risk" {
+			eligible = append(eligible, signal)
+		} else if signal.USDStatus == "AL" && (signal.TLStatus == "hazirlik" || signal.TLStatus == "tepki_bekleniyor") {
+			eligible = append(eligible, signal)
+		}
+	}
+	return eligible
 }
 
 func (a *App) runScan(ctx context.Context, mode analysis.Mode, universe analysis.Universe, minScore int) (*analysis.Report, error) {
@@ -250,7 +269,11 @@ func (a *App) runSymbolAnalysis(ctx context.Context, chatID int64, symbol string
 		return
 	}
 
-	log.Printf("symbol analysis finished symbol=%s duration=%s score=%d/%d", symbol, shortDuration(time.Since(started)), card.Score, card.MaxScore)
+	if len(card.Sections) > 0 {
+		log.Printf("symbol analysis finished symbol=%s duration=%s sections=%d", symbol, shortDuration(time.Since(started)), len(card.Sections))
+	} else {
+		log.Printf("symbol analysis finished symbol=%s duration=%s score=%d/%d", symbol, shortDuration(time.Since(started)), card.Score, card.MaxScore)
+	}
 	_ = a.bot.SendMessage(ctx, chatID, formatSymbolAnalysis(card))
 }
 
@@ -276,23 +299,33 @@ func (a *App) checkSchedule(ctx context.Context, now time.Time) {
 	if now.Weekday() == time.Saturday || now.Weekday() == time.Sunday {
 		return
 	}
-	if a.cfg.IntradayAutoEnabled &&
-		now.Hour() >= a.cfg.IntradayStartHour &&
-		now.Hour() <= a.cfg.IntradayEndHour &&
-		now.Minute() == a.cfg.IntradayMinute {
-		key := now.Format("2006-01-02-15")
+	if a.shouldRunIntraday(now) {
+		key := now.Format("2006-01-02-15-04")
 		if key != a.lastIntradayRunKey {
 			a.lastIntradayRunKey = key
 			go a.runScheduledScan(ctx, analysis.ModeIntraday)
 		}
 	}
-	if a.cfg.DailyAutoEnabled && now.Hour() == a.cfg.DailyHour && now.Minute() == a.cfg.DailyMinute {
+	if a.shouldRunDaily(now) {
 		key := now.Format("2006-01-02")
 		if key != a.lastDailyRunKey {
 			a.lastDailyRunKey = key
 			go a.runScheduledScan(ctx, analysis.ModeDaily)
 		}
 	}
+}
+
+func (a *App) shouldRunIntraday(now time.Time) bool {
+	return a.cfg.IntradayAutoEnabled &&
+		now.Hour() >= a.cfg.IntradayStartHour &&
+		now.Hour() <= a.cfg.IntradayEndHour &&
+		(now.Hour() < 18 || now.Minute() <= 1) &&
+		now.Minute() >= a.cfg.IntradayDelayMinutes &&
+		(now.Minute()-a.cfg.IntradayDelayMinutes)%a.cfg.IntradayEveryMinutes == 0
+}
+
+func (a *App) shouldRunDaily(now time.Time) bool {
+	return a.cfg.DailyAutoEnabled && now.Hour() == a.cfg.DailyHour && now.Minute() == a.cfg.DailyMinute
 }
 
 func (a *App) setRunning(mode analysis.Mode, universe string, cancel context.CancelFunc) {
@@ -375,7 +408,7 @@ Sonuc limiti: <code>%d</code>
 
 Gun ici komut kriteri: <code>Skor >= %d</code>
 Gun ici otomatik alarm: <code>Skor >= %d</code>
-Gun ici plan: <code>%02d:%02d-%02d:%02d, hafta ici</code>
+Gun ici plan: <code>%02d:00-%02d:59, her %d dk + %d dk veri gecikmesi, hafta ici</code>
 
 Gunluk komut kriteri: <code>Skor >= %d</code>
 Gunluk alarm: <code>Skor >= %d</code>
@@ -383,7 +416,7 @@ Gunluk plan: <code>%02d:%02d, hafta ici</code>
 
 Tarama motoru: <code>%s</code>
 Python batch/paralellik: <code>%d/%d</code>
-Tekil hisse karti: <code>TradingView snapshot</code>`,
+Tekil hisse karti: <code>Gun ici TL + gunluk TL/USD ortak motor</code>`,
 		html.EscapeString(a.defaultUniverse().Label),
 		html.EscapeString(a.scheduledUniverse().Label),
 		a.formatUniverseList(),
@@ -392,9 +425,9 @@ Tekil hisse karti: <code>TradingView snapshot</code>`,
 		a.cfg.IntradayMinScore,
 		a.cfg.IntradayAlertScore,
 		a.cfg.IntradayStartHour,
-		a.cfg.IntradayMinute,
 		a.cfg.IntradayEndHour,
-		a.cfg.IntradayMinute,
+		a.cfg.IntradayEveryMinutes,
+		a.cfg.IntradayDelayMinutes,
 		a.cfg.DailyMinScore,
 		a.cfg.DailyAlertMinScore,
 		a.cfg.DailyHour,

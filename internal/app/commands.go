@@ -42,7 +42,7 @@ func normalizeUniverseKey(raw string) string {
 	value = strings.ReplaceAll(value, "-", "")
 	value = strings.ReplaceAll(value, " ", "")
 	switch value {
-	case "", "30", "bist30", "xu030":
+	case "", "30", "bist30", "xu030", "tum", "bisttum", "100", "bist100", "xu100":
 		return "bist30"
 	default:
 		return value
@@ -90,15 +90,15 @@ func normalizeCommandSymbol(raw string) string {
 }
 
 func (a *App) formatHelp(chatID int64) string {
-	return fmt.Sprintf(`<b>BIST 30 VIOP Tarama Botu</b>
+	return fmt.Sprintf(`<b>BIST 30 Teknik Tarama Botu</b>
 Chat ID: <code>%d</code>
 
 <b>Tarama komutlari</b>
-<code>gunici</code> - BIST 30 gun ici tarama (5m + 15m, EMA9/21)
-<code>gunluk</code> - BIST 30 gunluk radar
+<code>gunici</code> - BIST 30 gun ici TL taramasi (5dk + 15dk)
+<code>gunluk</code> - BIST 30 gunluk TL ve USD radar (puanlar ayri)
 
 <b>Hisse karti</b>
-<code>THYAO</code> - Tek hisse 15dk, 1s ve gunluk teknik analiz
+<code>THYAO</code> - Gun ici TL ve gunluk TL/USD hisse karti
 
 <b>Yonetim</b>
 <code>durum</code> - Son tarama durumu

@@ -4,13 +4,14 @@ import "testing"
 
 func TestNormalizeUniverseKey(t *testing.T) {
 	cases := map[string]string{
-		"":           "tum",
-		"tum":        "tum",
-		"bist-tum":   "tum",
-		"BIST_100":   "bist100",
-		"bist 100":   "bist100",
-		"100":        "bist100",
-		"XU100":      "bist100",
+		"":           "bist30",
+		"tum":        "bist30",
+		"bist-tum":   "bist30",
+		"BIST_100":   "bist30",
+		"bist 100":   "bist30",
+		"100":        "bist30",
+		"XU100":      "bist30",
+		"XU030":      "bist30",
 		"bilinmeyen": "bilinmeyen",
 	}
 

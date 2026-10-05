@@ -1,166 +1,46 @@
-# Telegram BIST Bot
+# BIST30 Telegram Teknik Tarama Botu
 
-Go ile yazilmis Telegram BIST teknik tarama botu.
+Bu bot yalnizca BIST30 hisselerini tarar. Manuel ve otomatik taramalar ile tekil hisse karti ayni Python analiz motorunu kullanir.
 
-Tarama mantigi `scripts/gun_ici_tarama.py` ve `scripts/gunluk_tarama.py` dosyalarinda, Telegram botuna baglandi:
+## Komutlar ve zamanlama
 
-- `gunici100` ve `gunicitum`: Python/yfinance motoruyla 1h + 15m cift zaman dilimi taramasi. VWAP, POC/VAH, SMA20/50/200, RSI, TRP(9), OBV ve hacim sicramasi kullanir.
-- `gunluk100` ve `gunluktum`: Python/yfinance motoruyla 1y/1d gunluk alim radari. SMA20/50/200, RSI, 20 gun VWAP, POC, pivot S3, TRP(9), OBV ve hacim projeksiyonu kullanir.
-- `ALARK` gibi tekil hisse komutlari: 15dk, 1s ve gunluk teknik kart uretir. EMA9/20, VWAP, RSI, SMA200, hacim ve teknik skor birlikte okunur.
+- `/gunici`: Tamamlanmis 5 dakikalik ve 15 dakikalik **TL** mumlariyla gun ici tarama.
+- `/gunluk`: Gunluk **TL ve USD** grafiklerini bagimsiz puanlayan tarama.
+- `/THYAO` gibi BIST30 sembolleri: Gun ici TL, gunluk TL ve gunluk USD bolumlu hisse karti.
+- `/durum`, `/ayarlar`, `/reset`, `/help`: Durum, ayarlar, aktif islemi durdurma ve yardim.
 
-Bot ayrica hafta ici otomatik calisir:
+Otomatik gun ici tarama hafta ici kapanan her 5 dakikalik mumdan 1 dakika sonra calisir. Otomatik gunluk tarama Istanbul saatine gore hafta ici **22:30**'dadir. Bu saat sabittir; eski `.env` dosyalarindaki 18:20 ayari artik kullanilmaz. Yeni gun ici sinyaller tekrar bildirimini azaltmak icin deduplikasyondan gecer.
 
-- Gun ici: varsayilan olarak 10:15-17:15 arasinda saatte bir tarar. Sadece cok guclu sinyal varsa bildirim gonderir.
-- Gun sonu: varsayilan olarak 18:20'de gunluk radar bildirimi gonderir.
+## Analiz kurallari
 
-Bu bot teknik tarama aracidir; yatirim tavsiyesi degildir.
+Ortak motor `scripts/analysis_engine.py` dosyasindadir. EMA/SMA, RSI, MACD, CMF, goreli hacim, VWAP, cift range filter, onayli pivot destek/direnc ve RSI/MACD uyumsuzlugunu hesaplar. Destek bolgesindeki tepki mumu ve trend donusu durum etiketini etkiler. Pivotun sagindaki mumlar tamamlanmadan pivot sinyale girmez; acik mum kullanilmaz. Kapali kaynak 5'i Bir Arada gostergesinin formulu acik olmadigi icin range filter ayarlari gozlemlere dayali aday bir yeniden kurulumdur; orijinalle birebir eslesme iddiasi yoktur.
+
+TL ve USD puanlari 0-10 araliginda **ayri** gosterilir; agirlikli bir puan uretilmez. Gun ici analiz USD verisi indirmez. Gunluk USD kapanisi `hisse TL kapanisi / USDTRY kapanisi` ile hesaplanir. USD veri kalitesi ilk surumde `close_only` olarak isaretlenir; hacim ve OHLC tabanli mum teyidi USD puanina eklenmez.
+
+Bu sinyallerin %80-90 isabetle calisacagi iddia edilmez. Bu hedef, gecmis veri uzerinde tarihsel BIST30 uyeligi, islem maliyetleri ve gercekci giris/cikis kurallariyla yapilacak ileriye donuk testlerden sonra olculebilir.
 
 ## Kurulum
 
-1. BotFather'dan Telegram bot token'i al.
-2. `.env.example` dosyasini `.env` olarak kopyala.
-3. `.env` icinde `TELEGRAM_BOT_TOKEN` alanini doldur.
-4. Chat ID'ni bilmiyorsan botu bir kez calistirip Telegram'da `/start` yaz. Terminal log'unda veya bot cevabinda chat ID'yi gorup `.env` icindeki `TELEGRAM_CHAT_ID` alanina yaz.
-5. Botu calistir:
+Python 3.10+ ve Go 1.22+ gerekir. `.env.example` dosyasini `.env` olarak kopyalayip Telegram bot tokenini ve chat ID'sini ayarlayin. Python bagimliliklarini yukleyin:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+`.env` icinde `PYTHON_EXECUTABLE=.venv/bin/python` olarak ayarlayin. Botu calistirin:
 
 ```bash
 go run ./cmd/bistbot
 ```
 
-veya:
+Varsayilan kapsam `data/bist_30_hisseler.txt` dosyasidir. Liste `BIST30_SYMBOLS_FILE` ile guncellenebilir. `PYTHON_SCANNER_ENABLED=true` tutulmalidir; ortak TL/USD motoru bu modda kullanilir. Manuel ve otomatik gunluk tarama ayni hesaplama kurallarini kullanir, sadece listeleme esikleri ayridir.
+
+## Test
 
 ```bash
-./scripts/run.sh
+.venv/bin/python -m unittest discover -s scripts -p 'test_analysis_engine.py'
+go test ./...
 ```
 
-## Komutlar
-
-- `gunici100`: Sadece BIST 100 hisselerinde gun ici tarama yapar.
-- `gunicitum`: BIST Tum listesinde gun ici tarama yapar.
-- `gunluk100`: Sadece BIST 100 hisselerinde gunluk radar calistirir.
-- `gunluktum`: BIST Tum listesinde gunluk radar calistirir.
-- `ALARK`: ALARK icin 15dk, 1s ve gunluk teknik kart hazirlar. BIST listesindeki diger semboller de ayni sekilde kullanilir.
-- `reset`: O anda calisan tarama veya hisse analizini durdurur.
-- `durum`: Calisan/son tarama durumunu gosterir.
-- `ayarlar`: Esikleri ve zamanlama ayarlarini gosterir.
-- `help`: Kisa yardim mesajini gosterir.
-
-Genel tarama raporlari on eleme listesi olarak sade tutulur: hisse, fiyat ve skor gosterir. Ayrintili teknik yorum icin tekil hisse komutu kullanilir.
-
-Raporlarda otomatik stop seviyesi gosterilmez. Ilk prototipte `fiyat - 1.5 * ATR` referansi vardi; bu genel volatilite referansi oldugu icin gercek risk yonetimi stop'u gibi sunulmasi dogru degildi. Stop karari pozisyon boyutu, vade, portfoy riski ve stratejiye gore ayrica belirlenmelidir.
-
-## Onemli Ayarlar
-
-`.env` icinde en cok degistirecegin alanlar:
-
-```env
-ALL_SYMBOLS_FILE=data/bist_tum_hisseler.txt
-BIST100_SYMBOLS_FILE=data/bist_100_hisseler.txt
-DEFAULT_UNIVERSE=tum
-SCHEDULED_UNIVERSE=tum
-MAX_RESULTS=10
-
-PYTHON_SCANNER_ENABLED=true
-PYTHON_EXECUTABLE=python3
-PYTHON_SCANNER_SCRIPT=scripts/bist_data_scrap_bridge.py
-PYTHON_SCANNER_BATCH_SIZE=50
-PYTHON_SCANNER_WORKERS=4
-PYTHON_SCANNER_YF_THREADS=false
-
-GUNLUK_MIN_SCORE=3
-GUNICI_MIN_SCORE=5
-GUNLUK_ALERT_MIN_SCORE=3
-GUNICI_ALERT_MIN_SCORE=7
-
-INTRADAY_SCAN_MINUTE=15
-DAILY_SCAN_HOUR=18
-DAILY_SCAN_MINUTE=20
-```
-
-Daha hizli ve daha az istek atan bir varsayilan kurulum istersen:
-
-```env
-DEFAULT_UNIVERSE=bist100
-SCHEDULED_UNIVERSE=bist100
-```
-
-## Veri Kaynagi ve Mimari
-
-Bot iki parca gibi calisir:
-
-1. Go uygulamasi Telegram komutlarini, otomatik zamanlamayi, `reset` islemini, yetki kontrolunu ve mesaj formatlarini yonetir.
-2. `scripts/bist_data_scrap_bridge.py`, ayni dizindeki `gun_ici_tarama.py` ve `gunluk_tarama.py` dosyalarini import eder, tarama mantigini calistirir ve sonucu JSON olarak Go uygulamasina verir.
-
-Bu iki Python dosyasi repoya dahildir (vendored); ayri bir proje/dizin gerektirmez. Telegram bot bu dosyalari degistirmez; sadece ciktisini Telegram'in bekledigi rapor formatina cevirir.
-
-Hisseler 50'lik gruplarla toplu indirilir. Varsayilan olarak 4 download worker kullanilir; bu, eski `bist_data_scrap` taramalarindaki buyuk liste akisina denk gelir.
-
-Tekil hisse kartlari (`ALARK` gibi) halen TradingView scanner snapshot kullanir. Bu kartta veri kalite kontrolu uygulanir:
-
-- Fiyat sifir/negatif veya asiri buyukse analiz reddedilir.
-- RSI 0-100 araliginda degilse kullanilmaz.
-- `Recommend.All` -1 ile +1 araliginda degilse kullanilmaz.
-- Hacim orani negatif veya asiri buyukse kullanilmaz.
-- EMA/VWAP/SMA seviyeleri fiyatla mantiksiz oranda uyumsuzsa skorlamaya alinmaz.
-
-## Production (Docker Compose)
-
-Canli yayin artik Docker Compose ile, git tabanli bir deploy akisiyla yapiliyor. Detayli kurulum ve gunluk deploy komutlari icin bkz. [`infra/DEPLOY.md`](infra/DEPLOY.md).
-
-Ozet:
-
-```bash
-git pull --ff-only
-docker compose --env-file infra/.env.production -f infra/compose.prod.yml up -d --build bistbot
-```
-
-### Legacy (deprecated): Oracle/Systemd Yayini
-
-Asagidaki systemd tabanli yayin yontemi artik kullanilmiyor, sadece gecis donemi icin rollback amacli belgelenmistir. Yeni kurulumlar icin `infra/DEPLOY.md` kullanilmalidir.
-
-Tek komutluk yayin icin:
-
-```bash
-SSH_HOST=<oracle-public-ip> SSH_USER=ubuntu SSH_KEY=~/.ssh/<key> REMOTE_ARCH=arm64 ./scripts/deploy_oracle.sh
-```
-
-`REMOTE_ARCH` Oracle sunucunun mimarisine gore `arm64` veya `amd64` olabilir. Script Linux binary uretir, Telegram botu `/opt/telegram-bist-bot` altina, `bist_data_scrap` projesini `/opt/bist_data_scrap` altina kopyalar, Python venv kurar ve `bistbot` systemd servisini baslatir.
-
-Loglari izlemek icin:
-
-```bash
-sudo journalctl -u bistbot -f
-```
-
-Sunucuya elle girip kurmak istersen repo kopyalandiktan sonra alternatif komut:
-
-```bash
-sudo APP_DIR=/opt/telegram-bist-bot BIST_DATA_SCRAP_SRC=/path/to/bist_data_scrap BIST_DATA_SCRAP_DIR=/opt/bist_data_scrap ./scripts/install_systemd_service.sh
-sudo systemctl restart bistbot
-```
-
-## Derleme
-
-```bash
-go build ./cmd/bistbot
-```
-
-Binary olustuktan sonra:
-
-```bash
-./bistbot
-```
-
-## macOS'ta Surekli Calistirma
-
-Yerel makinede yfinance taramalari icin LaunchAgent yerine `screen` oturumu kullan:
-
-```bash
-./scripts/start_screen.sh
-./scripts/status_screen.sh
-./scripts/stop_screen.sh
-```
-
-`start_screen.sh` binary'yi yeniden derler ve botu `bistbot` adli detached screen oturumunda baslatir. Loglar `logs/bistbot.shell.err.log` ve `logs/bistbot.supervisor.log` dosyalarina yazilir.
-
-LaunchAgent bu projede onerilmez; macOS LaunchAgent altinda yfinance ayni komutta cok dusuk veri kapsami dondurebildi.
+Canli yayin icin mevcut Docker Compose akisi `infra/DEPLOY.md` dosyasindadir. Bu depodaki degisiklikler canli sunucuya kendiliginden uygulanmaz.

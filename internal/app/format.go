@@ -87,12 +87,20 @@ func shortDuration(d time.Duration) string {
 }
 
 func formatDailyCandidate(b *strings.Builder, rank int, signal analysis.Signal) {
-	fmt.Fprintf(b, "%d. <b>%s</b> | <code>%.2f TL</code> | Skor <code>%d/10</code>\n",
+	tlScore := signal.TLScore
+	if tlScore == 0 && signal.Score > 0 {
+		tlScore = signal.Score
+	}
+	fmt.Fprintf(b, "%d. <b>%s</b> | <code>%.2f TL</code>\n",
 		rank,
 		html.EscapeString(signal.Symbol),
 		signal.Price,
-		signal.Score,
 	)
+	usdText := "USD <code>veri yok</code>"
+	if signal.USDStatus != "" && signal.USDStatus != "veri_yok" {
+		usdText = fmt.Sprintf("USD <code>%d/10 %s</code>", signal.USDScore, html.EscapeString(prettyStatus(signal.USDStatus)))
+	}
+	fmt.Fprintf(b, "TL <code>%d/10 %s</code> | %s\n", tlScore, html.EscapeString(prettyStatus(signal.TLStatus)), usdText)
 	parts := make([]string, 0, 3)
 	if signal.RSI > 0 {
 		parts = append(parts, fmt.Sprintf("RSI <code>%.1f</code>", signal.RSI))
@@ -107,23 +115,29 @@ func formatDailyCandidate(b *strings.Builder, rank int, signal analysis.Signal) 
 		fmt.Fprintf(b, "%s\n", strings.Join(parts, " | "))
 	}
 	if reason := compactDetails(signal.Details, 6); reason != "" {
-		fmt.Fprintf(b, "Sinyal: %s\n", html.EscapeString(reason))
+		fmt.Fprintf(b, "TL: %s\n", html.EscapeString(reason))
+	}
+	if reason := compactDetails(signal.USDDetails, 4); reason != "" {
+		fmt.Fprintf(b, "USD: %s\n", html.EscapeString(reason))
 	}
 	b.WriteString("\n")
 }
 
 func formatIntradayCandidate(b *strings.Builder, rank int, signal analysis.Signal) {
-	fmt.Fprintf(b, "%d. <b>%s</b> | <code>%.2f TL</code> | Skor <code>%d/10</code>\n",
+	score := signal.TLScore
+	if score == 0 && signal.Score > 0 {
+		score = signal.Score
+	}
+	fmt.Fprintf(b, "%d. <b>%s</b> | <code>%.2f TL</code> | TL <code>%d/10 %s</code>\n",
 		rank,
 		html.EscapeString(signal.Symbol),
 		signal.Price,
-		signal.Score,
+		score,
+		html.EscapeString(prettyStatus(signal.TLStatus)),
 	)
-	fmt.Fprintf(b, "Konum: <code>5d VWAP/POC %s/%s</code> | <code>15d VWAP/POC %s/%s</code>\n",
+	fmt.Fprintf(b, "Konum: <code>5dk VWAP %s</code> | <code>15dk VWAP %s</code>\n",
 		html.EscapeString(positionText(signal.VWAP5M)),
-		html.EscapeString(positionText(signal.POC5M)),
 		html.EscapeString(positionText(signal.VWAP15M)),
-		html.EscapeString(positionText(signal.POC15M)),
 	)
 	momentum := make([]string, 0, 2)
 	if signal.RSI5M > 0 || signal.RSI15M > 0 {
@@ -143,7 +157,7 @@ func formatIntradayCandidate(b *strings.Builder, rank int, signal analysis.Signa
 
 func formatSymbolStarted(symbol string) string {
 	return fmt.Sprintf(`<b>%s teknik karti hazirlaniyor</b>
-15dk, 1s ve gunluk teknik gorunum kontrol ediliyor.`,
+Gun ici TL, gunluk TL ve gunluk USD gorunumu ayni analiz motoruyla kontrol ediliyor.`,
 		html.EscapeString(symbol),
 	)
 }
@@ -167,6 +181,9 @@ Detay: <code>%s</code>`,
 }
 
 func formatSymbolAnalysis(card *analysis.SymbolAnalysis) string {
+	if len(card.Sections) > 0 {
+		return formatSharedEngineCard(card)
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "<b>%s Teknik Karti</b>\n", html.EscapeString(card.Symbol))
 	fmt.Fprintf(&b, "<code>%s</code> | Kaynak: <code>%s</code>\n", html.EscapeString(card.FinishedAt.Format("02.01.2006 15:04")), html.EscapeString(card.Source))
@@ -187,6 +204,107 @@ func formatSymbolAnalysis(card *analysis.SymbolAnalysis) string {
 
 	b.WriteString("\nTeknik tarama notudur; yatirim tavsiyesi degildir.")
 	return b.String()
+}
+
+func formatSharedEngineCard(card *analysis.SymbolAnalysis) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "<b>%s Hisse Karti</b>\n", html.EscapeString(card.Symbol))
+	fmt.Fprintf(&b, "<code>%s</code> | <code>%s</code>\n", html.EscapeString(card.FinishedAt.Format("02.01.2006 15:04")), html.EscapeString(card.Source))
+	if card.USDTRY > 0 {
+		fmt.Fprintf(&b, "USDTRY: <code>%.4f</code> (%s)\n", card.USDTRY, html.EscapeString(formatDataTime(card.USDTRYAt)))
+	}
+	if card.Verdict != "" {
+		fmt.Fprintf(&b, "Ozet: <b>%s</b>\n", html.EscapeString(card.Verdict))
+	}
+	if card.VerdictNote != "" {
+		fmt.Fprintf(&b, "%s\n", html.EscapeString(card.VerdictNote))
+	}
+	for _, section := range card.Sections {
+		b.WriteString("\n")
+		formatTechnicalSection(&b, section)
+	}
+	if len(card.MissingNotes) > 0 {
+		fmt.Fprintf(&b, "\nEksik veri: <code>%s</code>\n", html.EscapeString(strings.Join(card.MissingNotes, " | ")))
+	}
+	b.WriteString("\nTeknik tarama notudur; yatirim tavsiyesi degildir.")
+	return b.String()
+}
+
+func formatTechnicalSection(b *strings.Builder, section analysis.TechnicalSection) {
+	fmt.Fprintf(b, "<b>%s</b> | <code>%d/%d %s</code>\n", html.EscapeString(section.Label), section.Score, section.MaxScore, html.EscapeString(prettyStatus(section.Status)))
+	if section.Price > 0 {
+		fmt.Fprintf(b, "Fiyat: <code>%.4f %s</code>\n", section.Price, html.EscapeString(section.Currency))
+	}
+	if section.Key == "intraday_tl" && (section.BarClosedAt5M != "" || section.BarClosedAt15M != "") {
+		fmt.Fprintf(b, "Son mum: <code>5dk %s</code> / <code>15dk %s</code>\n", html.EscapeString(formatDataTime(section.BarClosedAt5M)), html.EscapeString(formatDataTime(section.BarClosedAt15M)))
+	} else if section.BarClosedAt != "" {
+		fmt.Fprintf(b, "Son mum: <code>%s</code>\n", html.EscapeString(formatDataTime(section.BarClosedAt)))
+	}
+	levels := make([]string, 0, 2)
+	if section.Support > 0 {
+		levels = append(levels, fmt.Sprintf("Destek <code>%.4f</code>", section.Support))
+	}
+	if section.Resistance > 0 {
+		levels = append(levels, fmt.Sprintf("Direnc <code>%.4f</code>", section.Resistance))
+	}
+	if len(levels) > 0 {
+		fmt.Fprintf(b, "%s\n", strings.Join(levels, " | "))
+	}
+	if section.Key == "intraday_tl" {
+		fmt.Fprintf(b, "RSI: <code>5dk %.1f</code> / <code>15dk %.1f</code> | Hacim: <code>5dk x%.2f</code> / <code>15dk x%.2f</code>\n", section.RSI5M, section.RSI15M, section.VolumeX5M, section.VolumeX15M)
+		fmt.Fprintf(b, "CMF: <code>5dk %.2f</code> / <code>15dk %.2f</code> | Range trend: <code>%s</code>\n", section.CMF5M, section.CMF15M, trendText(section.RangeTrend))
+	} else {
+		fmt.Fprintf(b, "RSI <code>%.1f</code> | SMA20/50/200 <code>%.4f / %.4f / %.4f</code> | Range trend <code>%s</code>\n", section.RSI, section.SMA20, section.SMA50, section.SMA200, trendText(section.RangeTrend))
+		if section.Currency == "TL" {
+			fmt.Fprintf(b, "CMF <code>%.2f</code> | Hacim <code>x%.2f</code>\n", section.CMF, section.VolumeX)
+		}
+	}
+	if section.DataQuality != "" {
+		fmt.Fprintf(b, "Veri: <code>%s</code>\n", html.EscapeString(section.DataQuality))
+	}
+	if details := compactDetails(section.Details, 7); details != "" {
+		fmt.Fprintf(b, "Teyitler: %s\n", html.EscapeString(details))
+	}
+}
+
+func formatDataTime(raw string) string {
+	parsed, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		parsed, err = time.Parse("2006-01-02T15:04:05", raw)
+	}
+	if err != nil {
+		return raw
+	}
+	return parsed.Format("02.01 15:04")
+}
+
+func prettyStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "al":
+		return "AL"
+	case "hazirlik":
+		return "Hazirlik"
+	case "tepki_bekleniyor":
+		return "Tepki bekleniyor"
+	case "risk":
+		return "Risk"
+	case "zayif":
+		return "Zayif"
+	case "veri_yok":
+		return "Veri yok"
+	default:
+		if status == "" {
+			return "Durum yok"
+		}
+		return status
+	}
+}
+
+func trendText(value int) string {
+	if value > 0 {
+		return "Pozitif"
+	}
+	return "Negatif"
 }
 
 func formatTimeframeAnalysis(b *strings.Builder, frame analysis.TimeframeAnalysis) {

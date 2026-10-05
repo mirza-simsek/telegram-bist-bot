@@ -26,7 +26,7 @@ COPY data ./data
 
 ENV PYTHON_EXECUTABLE=python3 \
     PYTHON_SCANNER_SCRIPT=scripts/bist_data_scrap_bridge.py \
-    ALL_SYMBOLS_FILE=data/bist_30_hisseler.txt
+    BIST30_SYMBOLS_FILE=data/bist_30_hisseler.txt
 
 RUN chown -R bistbot:bistbot /app
 USER bistbot

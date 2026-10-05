@@ -40,7 +40,8 @@ type Config struct {
 	RunScanOnStartup            bool
 	IntradayAutoEnabled         bool
 	DailyAutoEnabled            bool
-	IntradayMinute              int
+	IntradayEveryMinutes        int
+	IntradayDelayMinutes        int
 	IntradayStartHour           int
 	IntradayEndHour             int
 	DailyHour                   int
@@ -74,7 +75,9 @@ func Load() (Config, error) {
 		allowed[defaultChatID] = struct{}{}
 	}
 
-	allSymbolsFile := getenv("ALL_SYMBOLS_FILE", getenv("SYMBOLS_FILE", filepath.FromSlash("data/bist_30_hisseler.txt")))
+	// The bot's scope is fixed to BIST30. Legacy ALL_SYMBOLS_FILE settings must not
+	// silently expand it to BIST100 or the full exchange.
+	allSymbolsFile := getenv("BIST30_SYMBOLS_FILE", filepath.FromSlash("data/bist_30_hisseler.txt"))
 	cfg := Config{
 		TelegramToken:     token,
 		DefaultChatID:     defaultChatID,
@@ -104,11 +107,14 @@ func Load() (Config, error) {
 		RunScanOnStartup:            boolEnv("RUN_SCAN_ON_STARTUP", false),
 		IntradayAutoEnabled:         boolEnv("INTRADAY_AUTO_ENABLED", true),
 		DailyAutoEnabled:            boolEnv("DAILY_AUTO_ENABLED", true),
-		IntradayMinute:              mustIntEnv("INTRADAY_SCAN_MINUTE", 15),
+		IntradayEveryMinutes:        mustIntEnv("INTRADAY_SCAN_EVERY_MINUTES", 5),
+		IntradayDelayMinutes:        mustIntEnv("INTRADAY_SCAN_DELAY_MINUTES", 1),
 		IntradayStartHour:           mustIntEnv("INTRADAY_START_HOUR", 10),
-		IntradayEndHour:             mustIntEnv("INTRADAY_END_HOUR", 17),
-		DailyHour:                   mustIntEnv("DAILY_SCAN_HOUR", 18),
-		DailyMinute:                 mustIntEnv("DAILY_SCAN_MINUTE", 20),
+		// The close scan time is a product rule from the user; ignore legacy 18:20
+		// entries in an existing .env so deployments migrate without manual edits.
+		IntradayEndHour: 18,
+		DailyHour:       22,
+		DailyMinute:     30,
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -126,6 +132,9 @@ func (c Config) IsChatAllowed(chatID int64) bool {
 }
 
 func (c Config) validate() error {
+	if !c.PythonScannerEnabled {
+		return errors.New("PYTHON_SCANNER_ENABLED must be true for the shared BIST30 TL/USD analysis engine")
+	}
 	if c.TradingViewChartConcurrency < 1 {
 		return errors.New("TRADINGVIEW_CHART_CONCURRENCY must be greater than 0")
 	}
@@ -146,7 +155,10 @@ func (c Config) validate() error {
 	if c.MaxResults < 1 {
 		return errors.New("MAX_RESULTS must be greater than 0")
 	}
-	if c.IntradayMinute < 0 || c.IntradayMinute > 59 || c.DailyMinute < 0 || c.DailyMinute > 59 {
+	if c.IntradayEveryMinutes < 1 || c.IntradayEveryMinutes > 60 {
+		return errors.New("INTRADAY_SCAN_EVERY_MINUTES must be between 1 and 60")
+	}
+	if c.IntradayDelayMinutes < 0 || c.IntradayDelayMinutes >= c.IntradayEveryMinutes || c.DailyMinute < 0 || c.DailyMinute > 59 {
 		return errors.New("schedule minutes must be between 0 and 59")
 	}
 	if c.IntradayStartHour < 0 || c.IntradayStartHour > 23 || c.IntradayEndHour < 0 || c.IntradayEndHour > 23 || c.DailyHour < 0 || c.DailyHour > 23 {

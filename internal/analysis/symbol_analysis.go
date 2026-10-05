@@ -45,6 +45,9 @@ var symbolTimeframes = []struct {
 }
 
 func (s *Scanner) AnalyzeSymbol(ctx context.Context, rawSymbol string) (*SymbolAnalysis, error) {
+	if s.pythonScanner != nil {
+		return s.pythonScanner.AnalyzeSymbol(ctx, rawSymbol)
+	}
 	if s.snapshotClient == nil {
 		return nil, fmt.Errorf("snapshot data source is not configured")
 	}
